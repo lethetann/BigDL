@@ -28,8 +28,8 @@ $ [/tmp/news20]$ tree . -L 1
 - The example code would automatically download the data during the first run.
 
 ### Run via pip install
-- [Install from pip](https://bigdl-project.github.io/0.11.0-SNAPSHOT/#PythonUserGuide/install-from-pip/)
-- Optional: check [Run after pip install](https://bigdl-project.github.io/0.11.0-SNAPSHOT/#PythonUserGuide/run-from-pip/)
+- [Install from pip](https://bigdl-project.github.io/0.12.0-SNAPSHOT/#PythonUserGuide/install-from-pip/)
+- Optional: check [Run after pip install](https://bigdl-project.github.io/0.12.0-SNAPSHOT/#PythonUserGuide/run-from-pip/)
 - Run the following command locally
 ```
 python ${BigDL_HOME}/pyspark/bigdl/models/textclassifier/textclassifier.py --max_epoch 3 --model cnn
@@ -37,8 +37,8 @@ python ${BigDL_HOME}/pyspark/bigdl/models/textclassifier/textclassifier.py --max
 ```
 
 ### Run via spark-submit
-- [Install without pip](https://bigdl-project.github.io/0.11.0-SNAPSHOT/#PythonUserGuide/install-without-pip/)
-- Optional: check [Run without pip](https://bigdl-project.github.io/0.11.0-SNAPSHOT/#PythonUserGuide/run-without-pip/)
+- [Install without pip](https://bigdl-project.github.io/0.12.0-SNAPSHOT/#PythonUserGuide/install-without-pip/)
+- Optional: check [Run without pip](https://bigdl-project.github.io/0.12.0-SNAPSHOT/#PythonUserGuide/run-without-pip/)
 - Run the following command
 ```{r, engine='sh'}
         PYTHONHASHSEED=0
@@ -76,6 +76,8 @@ which are `cnn`, `lstm` and `gru`, default is `cnn`
 * `--embedding_dim` option can be used to set the embedding size of word vector, the default value is 200.
 
 * `--learning_rate` option can be used to set learning rate, default is 0.05.
+
+* `--optimizerVersion` option can be used to set DistriOptimizer version, the value can be "optimizerV1" or "optimizerV2".
 
 To verify the accuracy, search "accuracy" from log:
 

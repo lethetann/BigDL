@@ -72,6 +72,29 @@ abstract class AbstractModule[A <: Activity: ClassTag, B <: Activity: ClassTag, 
    */
   var gradInput: A = Activity.allocate[A, T]()
 
+  protected var inputsFormats: Seq[Int] = null
+  protected var outputsFormats: Seq[Int] = null
+
+  /**
+   * set input formats for graph
+   * @param formats
+   * @return
+   */
+  def setInputFormats(formats: Seq[Int]): this.type = {
+    inputsFormats = formats
+    this
+  }
+
+  /**
+   * set output formats for graph
+   * @param formats
+   * @return
+   */
+  def setOutputFormats(formats: Seq[Int]): this.type = {
+    outputsFormats = formats
+    this
+  }
+
   /**
    * Get the scale of gradientWeight
    */
@@ -364,7 +387,7 @@ abstract class AbstractModule[A <: Activity: ClassTag, B <: Activity: ClassTag, 
    *
    * @return this
    */
-  final def setExtraParameter(extraParam: Array[Tensor[T]]): this.type = {
+  def setExtraParameter(extraParam: Array[Tensor[T]]): this.type = {
     val currentExtraParam = this.getExtraParameter()
     if (extraParam != null && currentExtraParam != null) {
       require(extraParam.length == currentExtraParam.length,
@@ -530,7 +553,7 @@ abstract class AbstractModule[A <: Activity: ClassTag, B <: Activity: ClassTag, 
    * @return self
    */
   @deprecated("please use recommended saveModule(path, overWrite)", "0.3.0")
-  final def save(path : String, overWrite: Boolean = false) : this.type = {
+  def save(path : String, overWrite: Boolean = false) : this.type = {
     this.clearState()
     File.save(this, path, overWrite)
     this
@@ -828,7 +851,18 @@ abstract class AbstractModule[A <: Activity: ClassTag, B <: Activity: ClassTag, 
   def toGraph(startNodes: ModuleNode[T]*): Graph[T] = {
     val starts = if (startNodes.isEmpty) Array(Input[T]()) else startNodes.toArray
     val endNodes = this.getEndNodes(starts)
-    Graph(starts, endNodes)
+    var graph = Graph(starts, endNodes)
+    if (graph.isInstanceOf[StaticGraph[T]]) {
+      // Merge nested graphs inside to make the whole graph non-nested
+      graph = graph.asInstanceOf[StaticGraph[T]].toSingleGraph()
+    }
+    if (inputsFormats != null) {
+      graph.setInputFormats(inputsFormats)
+    }
+    if (outputsFormats != null) {
+      graph.setOutputFormats(outputsFormats)
+    }
+    graph
   }
 
   /**
@@ -1103,7 +1137,7 @@ abstract class AbstractModule[A <: Activity: ClassTag, B <: Activity: ClassTag, 
    * @return current end nodes
    */
   private[bigdl] def getEndNodes(startNodes: Array[ModuleNode[T]]): Array[ModuleNode[T]] = {
-    val endNodes = Array(this.inputs(startNodes: _*))
+    val endNodes = Array(this.processInputs(startNodes))
     endNodes
   }
 

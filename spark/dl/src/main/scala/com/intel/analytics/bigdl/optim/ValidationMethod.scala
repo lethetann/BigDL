@@ -133,7 +133,7 @@ class TreeNNAccuracy[T: ClassTag]()(
     if (_output.dim() == 3) {
       _output = _output.select(2, 1)
       (if (_output.size(2) == 1) {
-        _output.apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
+        _output.clone().apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
       } else {
         _output.max(2)._2.squeeze()
       }).map(_target, (a, b) => {
@@ -147,7 +147,7 @@ class TreeNNAccuracy[T: ClassTag]()(
       _output = _output.select(1, 1)
       require(_target.size(1) == 1)
       (if (_output.size(1) == 1) {
-        _output.apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
+        _output.clone().apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
       } else {
         _output.max(1)._2.squeeze()
       }).map(_target, (a, b) => {
@@ -189,7 +189,7 @@ class Top1Accuracy[T: ClassTag](
 
     if (_output.dim() == 2) {
       (if (_output.size(2) == 1) {
-        _output.apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
+        _output.clone().apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
       } else {
         _output.max(2)._2.squeeze()
       }).map(_target, (a, b) => {
@@ -202,7 +202,7 @@ class Top1Accuracy[T: ClassTag](
     } else if (_output.dim == 1) {
       require(_target.size(1) == 1)
       (if (_output.size(1) == 1) {
-        _output.apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
+        _output.clone().apply1(x => if (ev.isGreater(ev.fromType(0.5), x)) ev.zero else ev.one)
       } else {
         _output.max(1)._2
       }).map(_target, (a, b) => {
@@ -1089,9 +1089,9 @@ class Loss[@specialized(Float, Double)T: ClassTag](
       output.toTensor[T]
     }
     val loss = ev.toType[Float](criterion.forward(_output, _target))
-    val count = 1
+    val count = _target.size().head
 
-    new LossResult(loss, count)
+    new LossResult(loss * count, count)
   }
 
   override def format(): String = "Loss"

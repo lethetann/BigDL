@@ -151,29 +151,6 @@ class StaticGraph[T: ClassTag](
     gradInput
   }
 
-  private var inputsFormats: Seq[Int] = null
-  private var outputsFormats: Seq[Int] = null
-
-  /**
-   * set input formats for graph
-   * @param formats
-   * @return
-   */
-  def setInputFormats(formats: Seq[Int]): this.type = {
-    inputsFormats = formats
-    this
-  }
-
-  /**
-   * set output formats for graph
-   * @param formats
-   * @return
-   */
-  def setOutputFormats(formats: Seq[Int]): this.type = {
-    outputsFormats = formats
-    this
-  }
-
   /**
    * convert static graph to ir graph and build according to engine type
    * @return return ir graph if converted successfully, otherwise null
@@ -191,12 +168,6 @@ class StaticGraph[T: ClassTag](
 
     val allNodes = forwardExecution
     if (!BlasToIR[T].convertingCheck(allNodes)) return null
-    inFormats.foreach(in =>
-      if (in == Memory.Format.nhwc) {
-        logger.warn("Not support NHWC in IRGraph")
-        return null
-      }
-    )
 
     val nodeMap = BlasToIR[T].convert(allNodes)
     val inputNodes = inputs.toArray.map(n => nodeMap.get(n).get)
@@ -207,5 +178,61 @@ class StaticGraph[T: ClassTag](
 
     val model = IRGraph(inputsIR, outputsIR, variables, true, inFormats, outFormats)
     model.build()
+  }
+
+  // Merge a nested StaticGraph into a non-nested one
+  private[bigdl] def toSingleGraph(): StaticGraph[T] = {
+    if (this.isNestedGraph()) {
+      val graph = this.cloneModule()
+      val fwdExecution = graph.getSortedForwardExecutions()
+      val dmOutput = fwdExecution(fwdExecution.length - 1).nextNodes(0)
+
+      var i = 0
+      while (i < fwdExecution.length) {
+        if (fwdExecution(i).element.isInstanceOf[StaticGraph[T]]) {
+          var g = fwdExecution(i).element.asInstanceOf[StaticGraph[T]].toSingleGraph()
+          fwdExecution(i).element = g
+
+          for (inputIndex <- 0 until fwdExecution(i).prevNodes.length) {
+            val inputNode = g.inputs(inputIndex)
+            inputNode.element = Identity()
+
+            while (fwdExecution(i).prevNodes.length != 0) {
+              val preNode = fwdExecution(i).prevNodes(0)
+              preNode.delete(fwdExecution(i))
+              preNode.add(inputNode)
+            }
+          }
+
+          for (outputIndex <- 0 until g.outputs.length) {
+            val outputNode = g.outputs(outputIndex)
+            outputNode.removeNextEdges()
+            while (fwdExecution(i).nextNodes.length != 0) {
+              val nextNode = fwdExecution(i).nextNodes(0)
+              fwdExecution(i).delete(nextNode)
+              outputNode.add(nextNode)
+            }
+          }
+        }
+        i += 1
+      }
+
+      val resultOutputNodes = dmOutput.prevNodes
+      resultOutputNodes.foreach(_.delete(dmOutput))
+      new StaticGraph[T](Array(graph.inputs(0)), resultOutputNodes,
+        enableExcludeChecking = this.enableExcludeChecking)
+    } else {
+      this
+    }
+  }
+
+  private def isNestedGraph(): Boolean = {
+    for (i <- 0 until forwardExecution.length) {
+      if (forwardExecution(i).element.isInstanceOf[StaticGraph[T]]) {
+        return true
+      }
+    }
+
+    false
   }
 }
